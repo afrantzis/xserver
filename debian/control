@@ -81,8 +81,7 @@ Build-Depends:
  xkb-data,
  x11-xkb-utils,
 # xmir nested server
- mir,
- libprotobuf-dev,
+ libmirclient-dev,
 Standards-Version: 3.9.3
 Vcs-Git: git://git.debian.org/git/pkg-xorg/xserver/xorg-server
 Vcs-Browser: http://git.debian.org/?p=pkg-xorg/xserver/xorg-server.git
