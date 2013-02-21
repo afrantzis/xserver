@@ -186,7 +186,7 @@ Depends:
  libpciaccess-dev,
  libpixman-1-dev (>= 0.21.8),
  mesa-common-dev,
- mir,
+ libmirclient-dev,
  libprotobuf-dev,
  ${misc:Depends},
 Description: Xorg X server - development files
