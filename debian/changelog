@@ -38,6 +38,14 @@ xorg-server (2:1.14.1-0ubuntu1) saucy; urgency=low
 
  -- Maarten Lankhorst <maarten.lankhorst@ubuntu.com>  Thu, 11 Jul 2013 16:52:28 +0200
 
+xorg-server (2:1.14.1-0ubuntu0.8+xmir1) saucy; urgency=low
+
+  * Rebase on Saucy packages
+  * Use a single Mir connection for all Screens
+  * Change xmir_get_drm_fd to return the fd matching a BusID
+
+ -- Christopher James Halse Rogers <raof@ubuntu.com>  Tue, 09 Jul 2013 10:55:19 +1000
+
 xorg-server (2:1.14.1-0ubuntu0.8) saucy; urgency=low
 
   * Use correct version for libxfixes3.
