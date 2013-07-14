@@ -32,6 +32,12 @@ xorg-server (2:1.14.2-1) UNRELEASED; urgency=low
 
  -- Robert Hooker <sarvatt@ubuntu.com>  Wed, 22 Aug 2012 11:12:17 -0400
 
+xorg-server (2:1.14.1-0ubuntu1+xmir1) saucy; urgency=low
+
+  * Rebase on Saucy package
+
+ -- Christopher James Halse Rogers <raof@ubuntu.com>  Mon, 15 Jul 2013 09:45:03 +1000
+
 xorg-server (2:1.14.1-0ubuntu1) saucy; urgency=low
 
   * Fix null pointer deref on logout. (LP: #1194343)
