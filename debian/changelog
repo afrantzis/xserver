@@ -1,4 +1,4 @@
-xorg-server (2:1.14.2-0ubuntu1+xmir1) sacuy; urgency=low
+xorg-server (2:1.14.2-0ubuntu1+xmir1) saucy; urgency=low
 
   * Rebase on saucy again
 
