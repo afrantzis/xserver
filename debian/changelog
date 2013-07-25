@@ -1,3 +1,9 @@
+xorg-server (2:1.14.2-0ubuntu1+xmir2) saucy; urgency=low
+
+  * Split out xserver-xorg-xmir package
+
+ -- Christopher James Halse Rogers <raof@ubuntu.com>  Thu, 25 Jul 2013 14:36:59 +1000
+
 xorg-server (2:1.14.2-0ubuntu1+xmir1) saucy; urgency=low
 
   * Rebase on saucy again

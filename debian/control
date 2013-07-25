@@ -359,3 +359,15 @@ Recommends:
 Replaces: xserver-xorg-core (<< 2:1.5.2)
 Description: common files used by various X servers
  This package provides files necessary for all X.Org based X servers.
+
+Package: xserver-xorg-xmir
+Architecture: any
+Depends:
+ ${shlibs:Depends},
+ ${misc:Depends},
+ xserver-xorg-core (= ${binary:Version}),
+Breaks: xserver-xorg-core (<= 2:1.14.2-0ubuntu1+xmir1)
+Replaces: xserver-xorg-core (<= 2:1.14.2-0ubuntu1+xmir1)
+Description: Xorg - the X.Org X server (module for running nested in Mir)
+ xserver-xorg-xmir provides an extension module to support running an
+ Xorg as a client of an existing Mir compositor.
