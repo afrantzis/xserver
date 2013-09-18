@@ -79,6 +79,7 @@ xmir_handle_buffer_available(void *ctx)
     xmir_screen *xmir;
     xmir_window *mir_win = *(xmir_window **)ctx;
 
+        xf86Msg(X_INFO, ">> Handle buffer available for %p %p\n", mir_win, mir_win->surface);
     if (mir_win->surface == NULL)
         return;
 
@@ -108,6 +109,7 @@ handle_buffer_received(MirSurface *surf, void *ctx)
     xmir_screen *xmir =
         xmir_screen_get(xmir_window_to_windowptr(xmir_win)->drawable.pScreen);
 
+        xf86Msg(X_INFO, ">>  Buffer callback for %p\n", xmir_win);
     xmir_post_to_eventloop(xmir->submit_rendering_handler, &xmir_win);
 }
 
@@ -141,11 +143,16 @@ xmir_submit_rendering_for_window(xmir_window *xmir_win,
 {
     RegionPtr tracking;
 
-    if (!xmir_screen_get(xmir_win->win->drawable.pScreen)->dmps_on)
-        return;
+    xf86Msg(X_INFO, "Entering %s\n", __FUNCTION__);
+    if (!xmir_screen_get(xmir_win->win->drawable.pScreen)->dpms_on)
+    {
+        xf86Msg(X_INFO, "  DPMS on returning\n");
+        return Success;
+    }
 
     xmir_win->has_free_buffer = FALSE;
     tracking = damage_region_for_current_buffer(xmir_win);
+        xf86Msg(X_INFO, ">> Swapping buffers for %p\n", xmir_win);
     mir_surface_swap_buffers(xmir_win->surface, &handle_buffer_received, xmir_win);
 
     if (region == NULL)
@@ -156,6 +163,7 @@ xmir_submit_rendering_for_window(xmir_window *xmir_win,
     if (RegionNil(tracking))
         xorg_list_del(&xmir_win->link_damage);
 
+        xf86Msg(X_INFO, "  Returning\n");
     return Success;
 }
 
