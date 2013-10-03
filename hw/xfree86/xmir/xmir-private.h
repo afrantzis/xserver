@@ -67,6 +67,7 @@ struct xmir_window {
     struct xorg_list    link_damage;
     unsigned int        has_free_buffer:1;
     unsigned int        damaged:1;
+    int                 use_count;
 };
 
 MirConnection *

@@ -347,6 +347,38 @@ xmir_apply_display_config(xf86CrtcConfigPtr crtc_cfg)
 }
 
 static void
+xmir_crtc_use_fragment(xf86CrtcPtr crtc, xmir_window *xmir_win)
+{
+    struct xmir_crtc *xmir_crtc = crtc->driver_private;
+
+    xmir_win->use_count++;
+    xmir_crtc->root_fragment = xmir_win;
+}
+
+static void
+xmir_crtc_release_fragment(xf86CrtcPtr crtc)
+{
+    struct xmir_crtc *xmir_crtc = crtc->driver_private;
+    xf86Msg(X_INFO, "Releasing fragment for crtc %p\n", crtc);
+
+    if (xmir_crtc->root_fragment)
+    {
+        xf86Msg(X_INFO, "Fragment use count: %d\n", xmir_crtc->root_fragment->use_count);
+        if (xmir_crtc->root_fragment->use_count == 1)
+        {
+            if (xmir_crtc->root_fragment->surface)
+                mir_surface_release_sync(xmir_crtc->root_fragment->surface);
+            xmir_crtc->root_fragment->surface = NULL;
+            RegionEmpty(&xmir_crtc->root_fragment->region);
+            xmir_crtc->root_fragment->has_free_buffer = FALSE;
+            xf86Msg(X_INFO, "Fragment unused: Releasing surfaces for crtc %p\n", crtc);
+        }
+        xmir_crtc->root_fragment->use_count--;
+        xmir_crtc->root_fragment = NULL;
+    }
+}
+
+static void
 xmir_crtc_surface_created(MirSurface *surface, void *ctx)
 {
     xf86Msg(X_INFO, "entering %s\n", __FUNCTION__);
@@ -399,14 +431,66 @@ xmir_remove_unused_surfaces(xf86CrtcConfigPtr crtc_cfg)
         struct xmir_crtc *xmir_crtc = crtc->driver_private;
 
         xf86Msg(X_INFO, "Remove unused crtc %d enabled %d %p\n", i, crtc->enabled, xmir_crtc);
-        if (((!crtc->enabled && !xf86CrtcInUse(crtc)) &&
-             xmir_crtc->root_fragment->surface != NULL))
+        if (!crtc->enabled && !xf86CrtcInUse(crtc) && xmir_crtc->root_fragment)
         {
-            mir_surface_release(xmir_crtc->root_fragment->surface, xmir_stupid_callback, NULL);
-            xmir_crtc->root_fragment->surface = NULL;
-            xmir_crtc->root_fragment->has_free_buffer = FALSE;
+            xmir_crtc_release_fragment(crtc);
         }
     }
+}
+
+static Bool
+xmir_crtc_update_fragment(xf86CrtcPtr crtc, DisplayModePtr mode,
+                              int x, int y)
+{
+    BoxRec output_bounds = {
+        .x1 = x,
+        .y1 = y,
+        .x2 = x + mode->HDisplay,
+        .y2 = y + mode->VDisplay
+    };
+    struct xmir_crtc *xmir_crtc = crtc->driver_private;
+    xmir_screen *xmir = xmir_crtc->xmir;
+    xf86Msg(X_INFO, "Updating fragment for crtc %p\n", crtc);
+
+    xmir_crtc_release_fragment(crtc);
+    xmir_window *free_fragment = NULL;
+
+    for (int i = 0; xmir->root_window_fragments[i] != NULL; i++)
+    {
+        if (xmir->root_window_fragments[i]->use_count == 0)
+        {
+            free_fragment = xmir->root_window_fragments[i];
+            continue;
+        }
+
+        BoxPtr box = RegionExtents(&xmir->root_window_fragments[i]->region);
+        if (box->x1 == output_bounds.x1 &&
+            box->x2 == output_bounds.x2 &&
+            box->y1 == output_bounds.y1 &&
+            box->y2 == output_bounds.y2)
+        {
+            xf86Msg(X_INFO, "Reusing fragment %d for crtc %p\n", i, crtc);
+            xmir_crtc_use_fragment(crtc, xmir->root_window_fragments[i]);
+            break;
+        }
+    }
+
+    if (!xmir_crtc->root_fragment)
+    {
+        xmir_crtc_use_fragment(crtc, free_fragment);
+        RegionInit(&xmir_crtc->root_fragment->region, &output_bounds, 0);
+        xmir_crtc->root_fragment->has_free_buffer = TRUE;
+        if (!xmir_create_surface_for_crtc(crtc))
+        {
+            xf86Msg(X_ERROR,
+                    "[xmir] Failed to create surface for %dx%d mode: %s\n",
+                    mode->HDisplay, mode->VDisplay,
+                    mir_surface_get_error_message(xmir_crtc->root_fragment->surface));
+            return FALSE;
+        }
+    }
+
+    return TRUE;
 }
 
 static Bool
@@ -444,18 +528,14 @@ xmir_crtc_set_mode_major(xf86CrtcPtr crtc, DisplayModePtr mode,
     xmir_update_config(XF86_CRTC_CONFIG_PTR(crtc->scrn));
 
     if (output == NULL || !xf86CrtcInUse(crtc)) {
-      if (xmir_crtc->root_fragment->surface != NULL)
-        mir_wait_for(mir_surface_release(xmir_crtc->root_fragment->surface, xmir_stupid_callback, NULL));
-        xmir_crtc->root_fragment->surface = NULL;
+        xmir_crtc_release_fragment(crtc);
         return TRUE;
     }
 
-    if (!xmir_create_surface_for_crtc(crtc))
+    if (!xmir_crtc_update_fragment(crtc, mode, x, y))
     {
         xf86Msg(X_ERROR,
-                "[xmir] Failed to create surface for %dx%d mode: %s\n",
-                mode->HDisplay, mode->VDisplay,
-                mir_surface_get_error_message(xmir_crtc->root_fragment->surface));
+                "[xmir] Failed to update fragment\n");
         return FALSE;
     }
 
@@ -463,9 +543,6 @@ xmir_crtc_set_mode_major(xf86CrtcPtr crtc, DisplayModePtr mode,
        This is fixed up in xmir_window_create */
     xmir_crtc->root_fragment->win = xf86ScrnToScreen(crtc->scrn)->root;
 
-    RegionInit(&xmir_crtc->root_fragment->region, &output_bounds, 0);
-    xmir_crtc->root_fragment->has_free_buffer = TRUE;
-    
     return TRUE;
 }
 
@@ -756,6 +833,7 @@ xmir_mode_pre_init(ScrnInfoPtr scrn, xmir_screen *xmir)
         xmir->root_window_fragments[i] = xmir_crtc->root_fragment;
         RegionNull(&xmir_crtc->root_fragment->region);
 
+        xmir_crtc->root_fragment = NULL;
         xf86crtc = xf86CrtcCreate(scrn, &crtc_funcs);
         xf86crtc->driver_private = xmir_crtc;
     }
